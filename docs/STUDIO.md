@@ -1,6 +1,6 @@
 # Hust Studio 0.8.1
 
-`HustStudio.exe` is a native Windows x64 IDE written directly in internal HAsm (`runtime/native/hust_studio_win64.ha`). The IDE executable itself is not written in Hust and does not require the Hust runtime to draw its UI.
+`HustStudio.exe` is a native Windows x64 IDE written directly in internal HAsm (`runtime/native/hust_studio_win64.asm`). The IDE executable itself is not written in Hust and does not require the Hust runtime to draw its UI.
 
 ## Current native features
 

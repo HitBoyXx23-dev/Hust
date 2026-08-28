@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.25
+Native sources renamed from `.ha` to `.asm`. They were always x86-64 assembly in
+GNU assembler syntax; the extension was the only thing suggesting otherwise.
+
 ## 0.8.24
 Repository layout: executables and scripts under `bin/`, sources at the root,
 `.gitignore` and `.gitattributes` added, build metadata files dropped.

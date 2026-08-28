@@ -64,7 +64,7 @@ it prints counters for every construct it could not translate one-to-one. See
 
 The compiler is not self-hosting. `.hs` under `compiler/`, `std/` and `ide/` is
 canonical source that the current interpreter cannot yet run; the shipped
-executables are built from the `.ha` bootstrap in `runtime/native/`. Closing that
+executables are built from the `.asm` bootstrap in `runtime/native/`. Closing that
 gap is the main line of work.
 
 ## Building

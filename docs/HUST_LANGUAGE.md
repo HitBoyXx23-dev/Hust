@@ -166,7 +166,7 @@ The Windows x64 target is:
   -> standalone .exe
 ```
 
-HAsm (`.ha`) is an internal low-level bootstrap/backend language, not a public fifth command-line tool.
+HAsm (`.asm`) is an internal low-level bootstrap/backend language, not a public fifth command-line tool.
 
 ## What “simpler than Rust” means in Hust
 
