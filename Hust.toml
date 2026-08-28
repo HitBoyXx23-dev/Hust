@@ -1,0 +1,17 @@
+[workspace]
+name = "Hust"
+author = "HitBoyXx23"
+version = "0.8.24"
+target = "windows-x64"
+
+[language]
+source_extension = ".hs"
+assembly_extension = ".ha"
+bytecode_extension = ".hbc"
+object_extension = ".hobj"
+library_extension = ".hlib"
+
+[tools]
+runtime = "HustRuntime.exe"
+interpreter = "HustInterpreter.exe"
+studio = "HustStudio.exe"

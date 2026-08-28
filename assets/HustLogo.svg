@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Hust logo">
+  <rect x="48" y="48" width="928" height="928" rx="210" fill="#0b101a" stroke="#20d2e2" stroke-width="34"/>
+  <path d="M512 135 835 320v384L512 889 189 704V320Z" fill="#101d2e"/>
+  <rect x="285" y="265" width="120" height="495" rx="35" fill="#f5f9ff"/>
+  <rect x="619" y="265" width="120" height="495" rx="35" fill="#f5f9ff"/>
+  <rect x="390" y="445" width="244" height="120" rx="35" fill="#f5f9ff"/>
+  <path d="M484 420h74l-38 170h-74Z" fill="#20d2e2"/>
+  <rect x="425" y="785" width="174" height="34" rx="16" fill="#20d2e2"/>
+</svg>
