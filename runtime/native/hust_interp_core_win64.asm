@@ -18,6 +18,7 @@
 .equ TAG_INT, 1
 .equ TAG_STR, 2
 .equ TAG_BOOL, 3
+.equ TAG_LIST, 4
 
 .equ MAX_TOKENS, 65536
 .equ MAX_FUNCS, 256
@@ -555,6 +556,69 @@ hi_alloc:
     mov rax, qword ptr [rip + arena_ptr]
     ret
 
+# ---------------------------------------------------------------- lists
+# A list value carries a pointer to a 24 byte header: count, capacity and the
+# element block. Elements are 24 byte {tag, a, b} triples, the same shape values
+# travel in.
+
+# RCX = capacity -> RAX = list header pointer
+hi_list_new:
+    push rbx
+    push rsi
+    sub rsp, 40
+    mov rbx, rcx
+    mov rcx, 24
+    call hi_alloc
+    mov rsi, rax
+    mov qword ptr [rsi], 0
+    mov qword ptr [rsi + 8], rbx
+    mov rcx, rbx
+    imul rcx, rcx, 24
+    call hi_alloc
+    mov qword ptr [rsi + 16], rax
+    mov rax, rsi
+    add rsp, 40
+    pop rsi
+    pop rbx
+    ret
+
+# RCX = list header, RAX/RDX/R8 = value to append
+hi_list_push:
+    push rbx
+    mov rbx, qword ptr [rcx]
+    cmp rbx, qword ptr [rcx + 8]
+    jae .hlp_full
+    mov r10, qword ptr [rcx + 16]
+    mov r11, rbx
+    imul r11, r11, 24
+    add r10, r11
+    mov qword ptr [r10], rax
+    mov qword ptr [r10 + 8], rdx
+    mov qword ptr [r10 + 16], r8
+    inc rbx
+    mov qword ptr [rcx], rbx
+.hlp_full:
+    pop rbx
+    ret
+
+# RCX = list header, RDX = index -> RAX/RDX/R8 value
+hi_list_get:
+    cmp rdx, qword ptr [rcx]
+    jae .hlg_none
+    mov r10, qword ptr [rcx + 16]
+    mov r11, rdx
+    imul r11, r11, 24
+    add r10, r11
+    mov rax, qword ptr [r10]
+    mov r8, qword ptr [r10 + 16]
+    mov rdx, qword ptr [r10 + 8]
+    ret
+.hlg_none:
+    mov rax, TAG_NONE
+    xor rdx, rdx
+    xor r8, r8
+    ret
+
 # ---------------------------------------------------------------- values
 # Values travel in RAX = tag, RDX = a (integer value or string pointer),
 # R8 = b (string length).
@@ -563,6 +627,8 @@ hi_alloc:
 hi_to_text:
     cmp rax, TAG_STR
     je .htt_done
+    cmp rax, TAG_LIST
+    je .htt_list
     cmp rax, TAG_BOOL
     je .htt_bool
     cmp rax, TAG_INT
@@ -570,6 +636,10 @@ hi_to_text:
     lea rdx, [rip + text_none]
     mov r8, 4
     ret
+.htt_list:
+    mov rdx, qword ptr [rdx]
+    mov rax, TAG_INT
+    jmp .htt_int
 .htt_bool:
     test rdx, rdx
     jz .htt_false
@@ -754,6 +824,18 @@ hi_exec_stmt:
     call hi_is
     test eax, eax
     jnz .hes_while
+    lea rcx, [rip + kw_for]
+    call hi_is
+    test eax, eax
+    jnz .hes_for
+    lea rcx, [rip + kw_break]
+    call hi_is
+    test eax, eax
+    jnz .hes_break
+    lea rcx, [rip + kw_continue]
+    call hi_is
+    test eax, eax
+    jnz .hes_continue
     lea rcx, [rip + kw_return]
     call hi_is
     test eax, eax
@@ -887,12 +969,87 @@ hi_exec_stmt:
     jz .hes_while_exit
     call hi_exec_block
     test rax, rax
-    jnz .hes_returned
+    jz .hes_while_next
+    mov rcx, qword ptr [rip + loop_signal]
+    mov qword ptr [rip + loop_signal], 0
+    cmp rcx, 1
+    je .hes_while_exit
+    cmp rcx, 2
+    je .hes_while_next
+    mov qword ptr [rip + loop_signal], 0
+    jmp .hes_returned
+.hes_while_next:
     jmp .hes_while_iter
 .hes_while_exit:
     call hi_skip_block
     call hi_advance
     jmp .hes_ok
+
+.hes_for:
+    call hi_advance
+    mov rcx, qword ptr [rip + tp]
+    call hi_tok
+    mov rsi, qword ptr [rax + 8]
+    mov edi, dword ptr [rax + 4]
+    call hi_advance
+    lea rcx, [rip + kw_in]
+    call hi_accept
+    call hi_eval_expr
+    cmp rax, TAG_LIST
+    jne .hes_for_skip
+    mov r12, rdx                            # list header
+    mov r13, qword ptr [rip + tp]           # body start
+    xor r14, r14                            # index
+.hes_for_iter:
+    cmp r14, qword ptr [r12]
+    jae .hes_for_end
+    mov rcx, r12
+    mov rdx, r14
+    call hi_list_get
+    mov qword ptr [rip + for_tag], rax
+    mov qword ptr [rip + for_a], rdx
+    mov qword ptr [rip + for_b], r8
+    sub rsp, 48
+    mov rcx, rsi
+    mov rdx, rdi
+    mov r8, qword ptr [rip + for_tag]
+    mov r9, qword ptr [rip + for_a]
+    mov rax, qword ptr [rip + for_b]
+    mov qword ptr [rsp + 32], rax
+    call hi_env_define
+    add rsp, 48
+    mov qword ptr [rip + tp], r13
+    call hi_exec_block
+    test rax, rax
+    jz .hes_for_next
+    mov rcx, qword ptr [rip + loop_signal]
+    mov qword ptr [rip + loop_signal], 0
+    cmp rcx, 1
+    je .hes_for_end
+    cmp rcx, 2
+    je .hes_for_next
+    jmp .hes_returned
+.hes_for_next:
+    inc r14
+    jmp .hes_for_iter
+.hes_for_end:
+    mov qword ptr [rip + tp], r13
+    call hi_skip_block
+    call hi_advance
+    jmp .hes_ok
+.hes_for_skip:
+    call hi_skip_block
+    call hi_advance
+    jmp .hes_ok
+
+.hes_break:
+    call hi_advance
+    mov qword ptr [rip + loop_signal], 1
+    jmp .hes_returned
+.hes_continue:
+    call hi_advance
+    mov qword ptr [rip + loop_signal], 2
+    jmp .hes_returned
 
 .hes_return:
     call hi_advance
@@ -1099,6 +1256,41 @@ hi_eval_cmp:
     push r15
     call hi_eval_add
     pop r15
+    cmp r15, 1
+    ja .hec_numeric
+    cmp rdi, TAG_STR
+    jne .hec_numeric
+    cmp rax, TAG_STR
+    jne .hec_numeric
+    # string == and != compare contents, not pointers
+    mov rcx, rdx
+    mov r10, r8
+    mov rdx, rsi
+    mov r11, rbx
+    cmp r10, r11
+    jne .hec_str_diff
+    xor r9, r9
+.hec_str_loop:
+    cmp r9, r10
+    jae .hec_str_same
+    mov al, byte ptr [rcx + r9]
+    cmp al, byte ptr [rdx + r9]
+    jne .hec_str_diff
+    inc r9
+    jmp .hec_str_loop
+.hec_str_same:
+    mov r9, 1
+    cmp r15, 0
+    je .hec_store
+    xor r9, r9
+    jmp .hec_store
+.hec_str_diff:
+    xor r9, r9
+    cmp r15, 0
+    je .hec_store
+    mov r9, 1
+    jmp .hec_store
+.hec_numeric:
     mov rcx, rdx
     mov rdx, rsi
     # RDX = left integer, RCX = right integer
@@ -1345,7 +1537,10 @@ hi_eval_primary:
     push rbx
     push rsi
     push rdi
-    sub rsp, 40
+    push r12
+    push r13
+    push r14
+    sub rsp, 32
 
     lea rcx, [rip + p_lparen]
     call hi_is
@@ -1360,11 +1555,43 @@ hi_eval_primary:
     cmp eax, TOK_IDENT
     je .hep_ident
 
+    lea rcx, [rip + p_lbracket]
+    call hi_is
+    test eax, eax
+    jnz .hep_list_literal
     call hi_advance
     mov rax, TAG_NONE
     xor rdx, rdx
     xor r8, r8
-    jmp .hep_done
+    jmp .hep_postfix
+
+.hep_list_literal:
+    call hi_advance
+    mov rcx, 64
+    call hi_list_new
+    mov rbx, rax
+.hep_list_items:
+    lea rcx, [rip + p_rbracket]
+    call hi_is
+    test eax, eax
+    jnz .hep_list_end
+    call hi_kind
+    cmp eax, TOK_EOF
+    je .hep_list_end
+    push rbx
+    call hi_eval_expr
+    pop rbx
+    mov rcx, rbx
+    call hi_list_push
+    lea rcx, [rip + p_comma]
+    call hi_accept
+    jmp .hep_list_items
+.hep_list_end:
+    call hi_advance
+    mov rax, TAG_LIST
+    mov rdx, rbx
+    xor r8, r8
+    jmp .hep_postfix
 
 .hep_paren:
     call hi_advance
@@ -1377,7 +1604,7 @@ hi_eval_primary:
     pop r8
     pop rdx
     pop rax
-    jmp .hep_done
+    jmp .hep_postfix
 
 .hep_number:
     mov rcx, qword ptr [rip + tp]
@@ -1400,7 +1627,7 @@ hi_eval_primary:
     mov rdx, rax
     mov rax, TAG_INT
     xor r8, r8
-    jmp .hep_done
+    jmp .hep_postfix
 
 .hep_string:
     mov rcx, qword ptr [rip + tp]
@@ -1411,7 +1638,7 @@ hi_eval_primary:
     mov rcx, rsi
     mov rdx, rdi
     call hi_interpolate
-    jmp .hep_done
+    jmp .hep_postfix
 
 .hep_ident:
     lea rcx, [rip + kw_true]
@@ -1434,6 +1661,31 @@ hi_eval_primary:
     test eax, eax
     jnz .hep_call
 
+    # list[...] literal
+    lea rcx, [rip + p_lbracket]
+    call hi_is
+    test eax, eax
+    jz .hep_variable
+    mov rcx, rsi
+    mov rdx, rdi
+    lea r8, [rip + kw_list]
+    xor r9, r9
+.hep_list_name:
+    cmp r9, rdx
+    jae .hep_list_name_end
+    mov al, byte ptr [r8 + r9]
+    test al, al
+    jz .hep_variable
+    cmp al, byte ptr [rcx + r9]
+    jne .hep_variable
+    inc r9
+    jmp .hep_list_name
+.hep_list_name_end:
+    cmp byte ptr [r8 + r9], 0
+    jne .hep_variable
+    jmp .hep_list_literal
+
+.hep_variable:
     mov rcx, rsi
     mov rdx, rdi
     call hi_env_lookup
@@ -1442,25 +1694,25 @@ hi_eval_primary:
     mov rdx, qword ptr [rax + 24]
     mov r8, qword ptr [rax + 32]
     mov rax, qword ptr [rax + 16]
-    jmp .hep_done
+    jmp .hep_postfix
 .hep_unknown:
     mov rax, TAG_NONE
     xor rdx, rdx
     xor r8, r8
-    jmp .hep_done
+    jmp .hep_postfix
 
 .hep_true:
     call hi_advance
     mov rax, TAG_BOOL
     mov rdx, 1
     xor r8, r8
-    jmp .hep_done
+    jmp .hep_postfix
 .hep_false:
     call hi_advance
     mov rax, TAG_BOOL
     xor rdx, rdx
     xor r8, r8
-    jmp .hep_done
+    jmp .hep_postfix
 
 .hep_call:
     call hi_advance
@@ -1500,8 +1752,87 @@ hi_eval_primary:
     jz .hep_unknown
     mov rcx, rax
     call hi_call_function
+.hep_postfix:
+    mov r12, rax
+    mov r13, rdx
+    mov r14, r8
+.hep_postfix_loop:
+    lea rcx, [rip + p_lbracket]
+    call hi_is
+    test eax, eax
+    jnz .hep_index
+    lea rcx, [rip + p_dot]
+    call hi_is
+    test eax, eax
+    jnz .hep_member
+    mov rax, r12
+    mov rdx, r13
+    mov r8, r14
+    jmp .hep_done
+
+.hep_index:
+    call hi_advance
+    call hi_eval_expr
+    mov rbx, rdx
+    lea rcx, [rip + p_rbracket]
+    call hi_accept
+    cmp r12, TAG_LIST
+    jne .hep_postfix_loop
+    mov rcx, r13
+    mov rdx, rbx
+    call hi_list_get
+    mov r12, rax
+    mov r13, rdx
+    mov r14, r8
+    jmp .hep_postfix_loop
+
+.hep_member:
+    call hi_advance
+    lea rcx, [rip + kw_length]
+    call hi_is
+    test eax, eax
+    jnz .hep_length
+    lea rcx, [rip + kw_push]
+    call hi_is
+    test eax, eax
+    jnz .hep_push
+    call hi_advance
+    jmp .hep_postfix_loop
+
+.hep_length:
+    call hi_advance
+    cmp r12, TAG_LIST
+    jne .hep_postfix_loop
+    mov rax, qword ptr [r13]
+    mov r13, rax
+    mov r12, TAG_INT
+    xor r14, r14
+    jmp .hep_postfix_loop
+
+.hep_push:
+    call hi_advance
+    lea rcx, [rip + p_lparen]
+    call hi_accept
+    call hi_eval_expr
+    mov qword ptr [rip + for_tag], rax
+    mov qword ptr [rip + for_a], rdx
+    mov qword ptr [rip + for_b], r8
+    lea rcx, [rip + p_rparen]
+    call hi_accept
+    cmp r12, TAG_LIST
+    jne .hep_postfix_loop
+    mov rcx, r13
+    mov rax, qword ptr [rip + for_tag]
+    mov rdx, qword ptr [rip + for_a]
+    mov r8, qword ptr [rip + for_b]
+    call hi_list_push
+    jmp .hep_postfix_loop
+
 .hep_done:
-    add rsp, 40
+    add rsp, 32
+    pop r14
+    pop r13
+    pop r12
     pop rdi
     pop rsi
     pop rbx
@@ -1658,6 +1989,7 @@ kw_end: .asciz "end"
 kw_if: .asciz "if"
 kw_else: .asciz "else"
 kw_while: .asciz "while"
+kw_in: .asciz "in"
 kw_return: .asciz "return"
 kw_print: .asciz "print"
 kw_mut: .asciz "mut"
@@ -1672,6 +2004,15 @@ kw_not: .asciz "not"
 p_lparen: .asciz "("
 p_rparen: .asciz ")"
 p_comma: .asciz ","
+p_lbracket: .asciz "["
+p_rbracket: .asciz "]"
+p_dot: .asciz "."
+kw_length: .asciz "length"
+kw_push: .asciz "push"
+kw_list: .asciz "list"
+kw_break: .asciz "break"
+kw_continue: .asciz "continue"
+kw_for: .asciz "for"
 p_plus: .asciz "+"
 p_minus: .asciz "-"
 p_star: .asciz "*"
@@ -1704,6 +2045,10 @@ ret_tag: .space 8
 ret_a: .space 8
 ret_b: .space 8
 call_argc: .space 8
+for_tag: .space 8
+for_a: .space 8
+for_b: .space 8
+loop_signal: .space 8
 hi_error_count: .space 8
 call_args: .space 192
 funcs: .space 10240

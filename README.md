@@ -47,7 +47,11 @@ The interpreter executes functions with parameters, recursion, integers, strings
 `{name}` interpolation, string concatenation, `if`/`else`, `while`, `return`,
 arithmetic, comparison and `and`/`or`/`not`.
 
-Not yet: structs, lists, maps, traits, `match`, `for`, closures, async.
+Also: `list[...]` literals, indexing, `.length`, `.push(v)` and `for x in list`.
+
+String `==` / `!=`, `break` and `continue` also work.
+
+Not yet: structs, maps, traits, `match`, closures, async.
 
 ## Rust to Hust
 

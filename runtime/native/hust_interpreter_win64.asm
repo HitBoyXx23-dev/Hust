@@ -1337,7 +1337,7 @@ rdl_none:
 # ---------------------------------------------------------------- data
 
 .section .rodata
-msg_version: .asciz "Hust Interpreter 0.8.25\r\n"
+msg_version: .asciz "Hust Interpreter 0.8.30\r\n"
 msg_repl_banner: .asciz "Native bootstrap REPL - no Python/Rust/.NET runtime. Type exit to leave.\r\n"
 msg_prompt: .asciz "hust> "
 msg_help: .asciz "Usage: HustInterpreter.exe <file.hs>\r\n       HustInterpreter.exe --convert-rust <input.rs> <output.hs>\r\n       HustInterpreter.exe --convert-rust-dir <input_dir> <output_dir>\r\n       HustInterpreter.exe            (REPL)\r\n"

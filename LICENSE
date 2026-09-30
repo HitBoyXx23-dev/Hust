@@ -1,39 +1,29 @@
-HitBoy Software License 1.0
-Copyright (c) 2026 HitBoyXx23 (HitBoy). All rights reserved.
+Hust Language License 1.0
+Copyright (c) 2026 HitBoyXx23. All rights reserved.
 
-Applies to: Hust ("the Software").
+Covers the Hust language: the compiler, interpreter, assembler, standard library,
+Hust Studio and the native runtime sources in this package.
 
 1. WHAT YOU MAY DO
 
-  a. Run the Software, for any purpose, personal or commercial, on any number of
-     machines.
-  b. Copy and share the Software, provided you pass it on complete and unchanged,
-     with this license included, and charge nothing for the Software itself.
-  c. Read the source included in these packages, and study how it works.
-  d. Build the Software from the source as shipped, for your own use.
+  a. Run the Hust toolchain for any purpose, personal or commercial.
+  b. Write, run, sell and distribute programs and libraries written in Hust. Code
+     you write in Hust is entirely your own and this license does not reach it.
+  c. Copy and share this package complete and unchanged, with this license included.
+  d. Read the source and build the toolchain from it for your own use.
 
 2. WHAT YOU MAY NOT DO
 
-  a. Modify the Software, or distribute a modified copy of it.
-  b. Distribute anything derived from the Software's source, including ports,
-     rewrites and translations of it into another language.
-  c. Remove or alter the author's name, this license, or version identifiers.
-  d. Present the Software, or anything built from it, as your own work.
+  a. Modify the toolchain or distribute a modified copy of it.
+  b. Distribute a derived language, port, rewrite or translation of it.
+  c. Remove the author's name, this license, or version identifiers.
+  d. Present Hust or a fork of it as your own work.
 
-3. ADD-ONS, PLUGINS AND LIBRARIES ARE YOURS
+3. THE LANGUAGE IS OPEN, THE IMPLEMENTATION IS NOT
 
-You may write, use, sell and distribute your own separate programs that work with
-the Software, and you do not need permission to do so. This includes:
-
-  a. HustMC plugins and RustMC add-ons that use the published interfaces.
-  b. Programs and libraries written in Hust, and libraries other Hust programs
-     depend on, in the way a Cargo crate is depended upon rather than edited into
-     the compiler.
-  c. Tools that read, generate, launch or automate the Software.
-
-Anything you write this way is your own work, under whatever license you choose.
-This license does not reach it. The line is simple: extending the Software from the
-outside is always allowed; changing the Software itself is not.
+The Hust syntax and semantics are free for anyone to implement independently. This
+license covers this implementation only. Compiler plugins, editor integrations,
+build tools and libraries that work alongside the toolchain are yours.
 
 4. NO WARRANTY
 
@@ -47,23 +37,11 @@ Back up anything you care about before running it.
 
 5. TERMINATION
 
-If you break the terms above, the permissions in section 1 end. Sections 3 and 4
-survive: add-ons you already wrote stay yours, and the warranty disclaimer still
-applies.
+Breaking these terms ends the permissions granted above. The add-on rights you have
+already exercised and the warranty disclaimer survive.
 
-6. TRADEMARKS AND AFFILIATION
+6. TRADEMARKS
 
-Minecraft is a trademark of Mojang Synergies AB and Microsoft Corporation. This is
-an independent implementation, not affiliated with, endorsed by or sponsored by
-Mojang or Microsoft, and it contains no Mojang code or assets. "Rust" is a
-trademark of the Rust Foundation; RustMC is an independent project written in the
-Rust language and is not affiliated with the Rust Foundation.
-
-"Hust", "HustMC" and "RustMC" are names used by the author for this
-project. This license covers the code, not the use of those names for other
-software.
-
-7. CHANGES
-
-The author may release later versions of the Software under different terms. This
-license covers the version it ships with.
+"Hust" is a name used by the author for this language. This license covers the
+code, not the use of that name for other software. "Rust" is a trademark of the
+Rust Foundation; Hust is an independent language and is not affiliated with it.
